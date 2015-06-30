@@ -35,8 +35,8 @@ bool CodeGen::doCodeGen(TranslationUnitAST &tunit, std::string name,
 
 	//JITのフラグが立っていたらJIT
 	if(with_jit){
-		llvm::ExecutionEngine *EE = llvm::EngineBuilder(Mod).create();
-		llvm::EngineBuilder(Mod).create();
+	  	llvm::ExecutionEngine *EE = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(Mod)).create();
+		llvm::EngineBuilder(std::unique_ptr<llvm::Module>(Mod)).create();
 			llvm::Function *F;
 		if(!(F=Mod->getFunction("main")))
 			return false;
@@ -401,15 +401,12 @@ llvm::Value *CodeGen::generateNumber(int value){
 
 bool CodeGen::linkModule(llvm::Module *dest, std::string file_name){
 	llvm::SMDiagnostic err;
-	llvm::Module *link_mod = llvm::ParseIRFile(file_name, err, llvm::getGlobalContext());
+	std::unique_ptr<llvm::Module> link_mod = llvm::parseIRFile(file_name, err, llvm::getGlobalContext());
 	if(!link_mod)
 		return false;
 
-	std::string err_msg;
-	if(llvm::Linker::LinkModules(dest, link_mod, llvm::Linker::DestroySource, &err_msg))
+	if(llvm::Linker::LinkModules(dest, link_mod.get()))
 		return false;
-
-	SAFE_DELETE(link_mod);
 
 	return true;
 }
