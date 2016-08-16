@@ -14,10 +14,6 @@
 #include "parser.hpp"
 #include "codegen.hpp"
 
-#ifdef _MSC_VER
-#include "link.h"
-#endif
-
 
 /**
  * オプション切り出し用クラス
