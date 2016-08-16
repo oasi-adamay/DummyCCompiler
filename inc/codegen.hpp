@@ -1,6 +1,7 @@
 #ifndef CODEGEN_HPP 
 #define CODEGEN_HPP
 
+#define _JIT_AS_INTERPRETER
 
 #include<cstdio>
 #include<cstdlib>
@@ -9,8 +10,12 @@
 #include<vector>
 #include<llvm/ADT/APInt.h>
 #include<llvm/IR/Constants.h>
-#include<llvm/ExecutionEngine/ExecutionEngine.h>
+#include "llvm/ExecutionEngine/GenericValue.h"
+#ifdef _JIT_AS_INTERPRETER
+#include "llvm/ExecutionEngine/Interpreter.h"
+#else
 #include<llvm/ExecutionEngine/MCJIT.h>
+#endif
 #include<llvm/Linker/Linker.h>
 #include<llvm/IR/LLVMContext.h>
 #include<llvm/IR/Module.h>
