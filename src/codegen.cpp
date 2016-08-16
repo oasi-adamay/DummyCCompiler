@@ -35,14 +35,29 @@ bool CodeGen::doCodeGen(TranslationUnitAST &tunit, std::string name,
 
 	//JITのフラグが立っていたらJIT
 	if(with_jit){
-	  	llvm::ExecutionEngine *EE = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(Mod)).create();
+#if 0
+		llvm::ExecutionEngine *EE = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(Mod)).create();
 		llvm::EngineBuilder(std::unique_ptr<llvm::Module>(Mod)).create();
-			llvm::Function *F;
+		llvm::Function *F;
 		if(!(F=Mod->getFunction("main")))
 			return false;
 
 		int (*fp)() = (int (*)())EE->getPointerToFunction(F);
 		fprintf(stderr,"%d\n",fp());
+#else
+
+		llvm::ExecutionEngine *EE = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(Mod)).create();
+		llvm::Function *F;
+		if (!(F = Mod->getFunction("main")))
+			return false;
+
+		// Call the `main` function with no arguments:
+		std::vector<llvm::GenericValue> noargs;
+		EE->runFunction(F, noargs);
+
+#endif
+
+
 	}
 
 	return true;
@@ -378,6 +393,7 @@ llvm::Value *CodeGen::generateJumpStatement(JumpStmtAST *jump_stmt){
 
 	}
 	Builder->CreateRet(ret_v);
+	return ret_v;
 }
 
 
@@ -405,8 +421,16 @@ bool CodeGen::linkModule(llvm::Module *dest, std::string file_name){
 	if(!link_mod)
 		return false;
 
+#if 0
 	if(llvm::Linker::LinkModules(dest, link_mod.get()))
 		return false;
+#else
+	llvm::Linker linker(*dest);
+	if (linker.linkInModule(std::move(link_mod))) {
+		return false;
+	}
+#endif
+
 
 	return true;
 }

@@ -1,7 +1,7 @@
 #include "llvm/IR/IRPrintingPasses.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
-#include "llvm/PassManager.h"
+#include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Pass.h"
 #include "llvm/LinkAllPasses.h"
 #include "llvm/Support/Debug.h"
@@ -13,6 +13,10 @@
 #include "AST.hpp"
 #include "parser.hpp"
 #include "codegen.hpp"
+
+#ifdef _MSC_VER
+#include "link.h"
+#endif
 
 
 /**
@@ -150,7 +154,7 @@ int main(int argc, char **argv) {
 	}
 
 	
-	llvm::PassManager pm;
+	llvm::legacy::PassManager pm;
 
 	//SSA化
 	pm.add(llvm::createPromoteMemoryToRegisterPass());
