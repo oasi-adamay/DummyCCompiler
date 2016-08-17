@@ -5,8 +5,10 @@ int test(int j){
 }
 
 int main(){
+	int ret;
 	int i;
 	i=10;
-    printnum(test(i));
-	return 0;
+    //printnum(test(i));
+	ret = test(i);
+	return ret;
 }

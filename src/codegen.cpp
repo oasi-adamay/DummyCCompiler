@@ -53,8 +53,10 @@ bool CodeGen::doCodeGen(TranslationUnitAST &tunit, std::string name,
 
 		// Call the `main` function with no arguments:
 		std::vector<llvm::GenericValue> noargs;
-		EE->runFunction(F, noargs);
-
+		llvm::GenericValue gv = EE->runFunction(F, noargs);
+		int ret = gv.IntVal.getSExtValue();
+		std::string id = Mod->getModuleIdentifier();
+		fprintf(stderr, "Exit with code:%d (%s)\n", ret, id.c_str());
 #endif
 
 
@@ -323,6 +325,8 @@ llvm::Value *CodeGen::generateBinaryExpression(BinaryExprAST *bin_expr){
 		//div
 		return Builder->CreateSDiv(lhs_v, rhs_v, "div_tmp");
 	}
+
+	return nullptr;
 }
 
 
