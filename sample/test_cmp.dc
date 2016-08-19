@@ -1,0 +1,15 @@
+int test(int j){
+	int ret;
+//	ret = j == 10;
+	ret = j <= 9;
+	return ret;
+}
+
+int main(){
+	int ret;
+	int i;
+	i=10;
+    //printnum(test(i));
+	ret = test(i);
+	return ret;
+}

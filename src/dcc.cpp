@@ -162,6 +162,8 @@ int main(int argc, char **argv) {
 	pm.run(mod);
 	raw_stream.close();
 
+	mod.dump();
+
 	//delete
 	SAFE_DELETE(parser);
 	SAFE_DELETE(codegen);

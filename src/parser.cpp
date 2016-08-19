@@ -437,7 +437,8 @@ BaseAST *Parser::visitAssignmentExpression(){
 			if(Tokens->getCurType()==TOK_SYMBOL &&
 				Tokens->getCurString()=="="){
 				Tokens->getNextToken();
-				if(rhs=visitAdditiveExpression(NULL)){
+//				if(rhs=visitAdditiveExpression(NULL)){
+				if(rhs=visitEqualityExpression(NULL)){
 					return new BinaryExprAST("=", lhs, rhs);
 				}else{
 					SAFE_DELETE(lhs);
@@ -453,13 +454,101 @@ BaseAST *Parser::visitAssignmentExpression(){
 	}
 
 	//additive_expression
-	BaseAST *add_expr=visitAdditiveExpression(NULL);
+//	BaseAST *add_expr=visitAdditiveExpression(NULL);
+	BaseAST *add_expr= visitEqualityExpression(NULL);
 	if(add_expr){
 		return add_expr;
 	}
 
 	return NULL;
 }
+
+
+/**
+* EqualityExpression用構文解析メソッド
+* @param lhs(左辺),初回呼び出し時はNULL
+* @return 解析成功：AST　解析失敗：NULL
+*/
+BaseAST *Parser::visitEqualityExpression(BaseAST *lhs) {
+	//bkup index
+	int bkup = Tokens->getCurIndex();
+	if (!lhs)
+		lhs = visitRelationalExpression(NULL);
+
+	if (!lhs) {
+		return NULL;
+	}
+
+	BaseAST *rhs;
+
+	std::string tokenStr = Tokens->getCurString();
+
+	if (Tokens->getCurType() == TOK_SYMBOL && (
+		tokenStr == "==" ||
+		tokenStr == "!="
+		))
+	{
+		Tokens->getNextToken();
+		rhs = visitRelationalExpression(NULL);
+		if (rhs) {
+			return visitEqualityExpression(
+				new BinaryExprAST(tokenStr, lhs, rhs)
+			);
+		}
+		else {
+			SAFE_DELETE(lhs);
+			Tokens->applyTokenIndex(bkup);
+			return NULL;
+		}
+	}
+
+	return lhs;
+}
+
+/**
+* RelationalExpression用構文解析メソッド
+* @param lhs(左辺),初回呼び出し時はNULL
+* @return 解析成功：AST　解析失敗：NULL
+*/
+BaseAST *Parser::visitRelationalExpression(BaseAST *lhs) {
+	//bkup index
+	int bkup = Tokens->getCurIndex();
+	if (!lhs)
+		lhs = visitAdditiveExpression(NULL);
+
+	if (!lhs) {
+		return NULL;
+	}
+
+	BaseAST *rhs;
+
+	std::string tokenStr = Tokens->getCurString();
+
+	if (Tokens->getCurType() == TOK_SYMBOL && (
+		tokenStr == "<" ||
+		tokenStr == "<=" ||
+		tokenStr == ">" ||
+		tokenStr == ">="
+		))
+	{
+		Tokens->getNextToken();
+		rhs = visitAdditiveExpression(NULL);
+		if (rhs) {
+			return visitRelationalExpression(
+				new BinaryExprAST(tokenStr, lhs, rhs)
+			);
+		}
+		else {
+			SAFE_DELETE(lhs);
+			Tokens->applyTokenIndex(bkup);
+			return NULL;
+		}
+	}
+
+	return lhs;
+
+}
+
 
 
 
@@ -471,8 +560,8 @@ BaseAST *Parser::visitAssignmentExpression(){
 BaseAST *Parser::visitAdditiveExpression(BaseAST *lhs){
 	//bkup index
 	int bkup=Tokens->getCurIndex();
-
 	if(!lhs)
+
 		lhs=visitMultiplicativeExpression(NULL);
 	BaseAST *rhs;
 

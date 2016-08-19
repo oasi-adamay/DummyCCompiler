@@ -17,6 +17,12 @@ additive_expression
 	: multiplicative_expression , [ { "+" , multiplicative_expression  |  "-" , multiplicative_expression } ]
 	;
 
+relational_expression
+	: additive_expression , [ {"<" | "<=" | ">" | ">="} ,additive_expression]
+
+equality_expression
+	: relational_expression , [{"==" | "!="} ,relational_expression]
+
 assignment_expression
 	: IDENTIFIER , '=' , additive_expression
 	| additive_expression

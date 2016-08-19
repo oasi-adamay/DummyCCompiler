@@ -312,19 +312,55 @@ llvm::Value *CodeGen::generateBinaryExpression(BinaryExprAST *bin_expr){
 	if(bin_expr->getOp()=="="){
 		//store
 		return Builder->CreateStore(rhs_v, lhs_v);
-	}else if(bin_expr->getOp()=="+"){
+	}
+	else if(bin_expr->getOp()=="+"){
 		//add
 		return Builder->CreateAdd(lhs_v, rhs_v, "add_tmp");
-	}else if(bin_expr->getOp()=="-"){
+	}
+	else if(bin_expr->getOp()=="-"){
 		//sub
 		return Builder->CreateSub(lhs_v, rhs_v, "sub_tmp");
-	}else if(bin_expr->getOp()=="*"){
+	}
+	else if(bin_expr->getOp()=="*"){
 		//mul
 		return Builder->CreateMul(lhs_v, rhs_v, "mul_tmp");
-	}else if(bin_expr->getOp()=="/"){
+	}
+	else if(bin_expr->getOp()=="/"){
 		//div
 		return Builder->CreateSDiv(lhs_v, rhs_v, "div_tmp");
 	}
+	else if(bin_expr->getOp()=="=="){
+		//cmpeq
+		llvm::Value *tmp = Builder->CreateICmpEQ(lhs_v, rhs_v, "cmpeq_tmp");
+		// Convert bool 0/1 to int 0 or 1
+		return Builder->CreateZExt(tmp, llvm::Type::getInt32Ty(llvm::getGlobalContext()),"bool_tmp");
+	}
+	else if (bin_expr->getOp() == "!=") {
+		//cmpne
+		llvm::Value *tmp = Builder->CreateICmpNE(lhs_v, rhs_v, "cmpne_tmp");
+		return Builder->CreateZExt(tmp, llvm::Type::getInt32Ty(llvm::getGlobalContext()), "bool_tmp");
+	}
+	else if (bin_expr->getOp() == "<") {
+		//cmplt
+		llvm::Value *tmp = Builder->CreateICmpSLT(lhs_v, rhs_v, "cmplt_tmp");
+		return Builder->CreateZExt(tmp, llvm::Type::getInt32Ty(llvm::getGlobalContext()), "bool_tmp");
+	}
+	else if (bin_expr->getOp() == "<=") {
+		//cmple
+		llvm::Value *tmp = Builder->CreateICmpSLE(lhs_v, rhs_v, "cmple_tmp");
+		return Builder->CreateZExt(tmp, llvm::Type::getInt32Ty(llvm::getGlobalContext()), "bool_tmp");
+	}
+	else if (bin_expr->getOp() == ">") {
+		//cmpgt
+		llvm::Value *tmp = Builder->CreateICmpSGT(lhs_v, rhs_v, "cmpgt_tmp");
+		return Builder->CreateZExt(tmp, llvm::Type::getInt32Ty(llvm::getGlobalContext()), "bool_tmp");
+	}
+	else if (bin_expr->getOp() == ">=") {
+		//cmpge
+		llvm::Value *tmp = Builder->CreateICmpSGE(lhs_v, rhs_v, "cmple_tmp");
+		return Builder->CreateZExt(tmp, llvm::Type::getInt32Ty(llvm::getGlobalContext()), "bool_tmp");
+	}
+
 
 	return nullptr;
 }

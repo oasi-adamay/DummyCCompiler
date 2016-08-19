@@ -20,6 +20,7 @@ TokenStream *LexicalAnalysis(std::string input_filename){
 		return NULL;
 	while(ifs && getline(ifs, cur_line)){
 		char next_char;
+		char next2_char;
 		std::string line;
 		Token *next_token;
 		int index=0;				
@@ -27,6 +28,12 @@ TokenStream *LexicalAnalysis(std::string input_filename){
 	
 		while(index<length){	
 			next_char = cur_line.at(index++);
+			if (index < length) {
+				next2_char = cur_line.at(index);
+			}
+			else {
+				next2_char = 0x0;
+			}
 
 			//コメントアウト読み飛ばし
 			if(iscomment){
@@ -61,7 +68,8 @@ TokenStream *LexicalAnalysis(std::string input_filename){
 		
 				if(token_str == "int"){
 					next_token = new Token(token_str, TOK_INT, line_num);
-				}else if(token_str == "return"){
+				}
+				else if(token_str == "return"){
 					next_token = new Token(token_str, TOK_RETURN, line_num);
 				}else{
 					next_token = new Token(token_str, TOK_IDENTIFIER, line_num);
@@ -105,21 +113,35 @@ TokenStream *LexicalAnalysis(std::string input_filename){
 		
 			//それ以外(記号)
 			}else{
-				if(next_char == '*' ||
-						next_char == '+' ||
-						next_char == '-' ||
-						next_char == '=' ||
-						next_char == ';' ||
-						next_char == ',' ||
-						next_char == '(' ||
-						next_char == ')' ||
-						next_char == '{' ||
-						next_char == '}'){
+				if (
+					(next_char == '<' && next2_char == '=') ||
+					(next_char == '>' && next2_char == '=') ||
+					(next_char == '=' && next2_char == '=') ||
+					(next_char == '!' && next2_char == '=')
+					) {
+					token_str += next_char;
+					token_str += next2_char;				
+					index++;
+					next_token = new Token(token_str, TOK_SYMBOL, line_num);
+				}
+				else  if (next_char == '*' ||
+					next_char == '+' ||
+					next_char == '-' ||
+					next_char == '=' ||
+					next_char == ';' ||
+					next_char == ',' ||
+					next_char == '(' ||
+					next_char == ')' ||
+					next_char == '{' ||
+					next_char == '}' ||
+					next_char == '<' ||
+					next_char == '>'
+					) {
 					token_str += next_char;
 					next_token = new Token(token_str, TOK_SYMBOL, line_num);
-
+				}
 				//解析不能字句
-				}else{
+				else{
 					fprintf(stderr, "unclear token : %c", next_char);
 					SAFE_DELETE(tokens);
 					return NULL;
