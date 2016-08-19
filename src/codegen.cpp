@@ -29,6 +29,8 @@ bool CodeGen::doCodeGen(TranslationUnitAST &tunit, std::string name,
 		return false;
 	}
 
+	//Mod->dump();
+
 	//LinkFileの指定があったらModuleをリンク
 	if( !link_file.empty() && !linkModule(Mod, link_file) )
 		return false;
@@ -241,11 +243,17 @@ llvm::Value *CodeGen::generateVariableDeclaration(VariableDeclAST *vdecl){
 llvm::Value *CodeGen::generateStatement(BaseAST *stmt){
 	if(llvm::isa<BinaryExprAST>(stmt)){
 		return generateBinaryExpression(llvm::dyn_cast<BinaryExprAST>(stmt));
-	}else if(llvm::isa<CallExprAST>(stmt)){
+	}
+	else if(llvm::isa<CallExprAST>(stmt)){
 		return generateCallExpression(llvm::dyn_cast<CallExprAST>(stmt));
-	}else if(llvm::isa<JumpStmtAST>(stmt)){
+	}
+	else if(llvm::isa<JumpStmtAST>(stmt)){
 		return generateJumpStatement(llvm::dyn_cast<JumpStmtAST>(stmt));
-	}else{
+	}
+	else if (llvm::isa<IfStmtAST>(stmt)) {
+		return generateIfStatement(llvm::dyn_cast<IfStmtAST>(stmt));
+	}
+	else{
 		return NULL;
 	}
 }
@@ -435,6 +443,92 @@ llvm::Value *CodeGen::generateJumpStatement(JumpStmtAST *jump_stmt){
 	Builder->CreateRet(ret_v);
 	return ret_v;
 }
+
+/**
+* if else 生成メソッド
+* @param  IfStmtAST
+* @return 生成したValueのポインタ
+*/
+llvm::Value *CodeGen::generateIfStatement(IfStmtAST *if_stmt) {
+	BaseAST *cond_expr = if_stmt->getCond();
+	BaseAST *then_stmt = if_stmt->getThen();
+	BaseAST *else_stmt = if_stmt->getElse();
+
+	llvm::Value *cond_v;
+	if (llvm::isa<BinaryExprAST>(cond_expr)) {
+		cond_v = generateBinaryExpression(llvm::dyn_cast<BinaryExprAST>(cond_expr));
+	}
+	else if (llvm::isa<VariableAST>(cond_expr)) {
+		VariableAST *var = llvm::dyn_cast<VariableAST>(cond_expr);
+		cond_v = generateVariable(var);
+	}
+	else if (llvm::isa<NumberAST>(cond_expr)) {
+		NumberAST *num = llvm::dyn_cast<NumberAST>(cond_expr);
+		cond_v = generateNumber(num->getNumberValue());
+	}
+	if (!cond_v) return NULL;
+
+	// 条件を0と比較することによって真偽値に変換する。
+	cond_v = Builder->CreateICmpNE(	cond_v, Builder->getInt32(0), "ifcond");
+
+	// 現在構築中の関数オブジェクトを取得する。
+	llvm::Function *TheFunction = Builder->GetInsertBlock()->getParent();
+
+	// thenとelseの場合のためのブロックを生成する。
+	// thenブロックを関数の最後に挿入する。
+	llvm::BasicBlock *ThenBB =	llvm::BasicBlock::Create(llvm::getGlobalContext(), "if_true", TheFunction);
+	llvm::BasicBlock *ElseBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "if_false");
+	llvm::BasicBlock *MergeBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "if_exit");
+
+	//ブロックが生成されたら、どちらのブロックを選ぶかを決めるための条件分岐を生成することが出来る。
+	Builder->CreateCondBr(cond_v, ThenBB, ElseBB);
+
+	// then値を発行する。
+	// 条件分岐が挿入されたあと、Builderにthenブロックへ挿入させるようにする。
+	Builder->SetInsertPoint(ThenBB);
+
+	// 挿入点がセットされたら、ASTからthenのCodegenを再帰的に実行する。
+	llvm::Value *then_v = generateStatement(then_stmt);
+	if (!then_v) return nullptr;
+
+	// thenブロックを仕上げるために、無条件の分岐（br命令）をmergeブロックに生成する。
+	Builder->CreateBr(MergeBB);
+
+	// thenのCodegenは、現在のブロックを変更し、phiのためにThenBBを更新しうる。
+	ThenBB = Builder->GetInsertBlock();
+
+	// elseブロックを発行する。
+	TheFunction->getBasicBlockList().push_back(ElseBB);
+	Builder->SetInsertPoint(ElseBB);
+	llvm::Value *else_v = generateStatement(else_stmt);
+	if (!else_v) return nullptr;
+
+	// elseブロックを仕上げるために、無条件の分岐（br命令）をmergeブロックに生成する。
+	Builder->CreateBr(MergeBB);
+
+	// elseのCodegenは、現在のブロックを変更し、phiのためにElseBBを更新しうる。
+	ElseBB = Builder->GetInsertBlock();
+
+	// 分岐を合流させるコード（merge code）
+	TheFunction->getBasicBlockList().push_back(MergeBB);
+	Builder->SetInsertPoint(MergeBB);
+
+#if 1
+	//TheFunction->dump();
+	return nullptr;
+#else
+	llvm::PHINode *PN =
+		Builder->CreatePHI(llvm::Type::getInt32Ty(llvm::getGlobalContext()), 2, "iftmp");
+
+	PN->addIncoming(then_v, ThenBB);
+	PN->addIncoming(else_v, ElseBB);
+
+	TheFunction->dump();
+
+	return PN;
+#endif
+}
+
 
 
 /**

@@ -149,11 +149,14 @@ int main(int argc, char **argv) {
 		exit(1);
 	}
 
-	
+	fprintf(stderr, "===before opt===\n");
+	mod.dump();
+
 	llvm::legacy::PassManager pm;
 
 	//SSA化
 	pm.add(llvm::createPromoteMemoryToRegisterPass());
+
 
 	//出力
 	std::error_code error;
@@ -162,7 +165,9 @@ int main(int argc, char **argv) {
 	pm.run(mod);
 	raw_stream.close();
 
+	fprintf(stderr, "===after opt===\n");
 	mod.dump();
+
 
 	//delete
 	SAFE_DELETE(parser);

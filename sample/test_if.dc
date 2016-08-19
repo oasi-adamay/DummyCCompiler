@@ -1,0 +1,15 @@
+int test(int j){
+	int ret;
+	if(j>0) ret = j*39;
+	else ret = j*10;
+	return ret;
+}
+
+int main(){
+	int ret;
+	int i;
+	i=10;
+    //printnum(test(i));
+	ret = test(i);
+	return ret;
+}

@@ -40,6 +40,7 @@ enum AstID{
 	NullExprID,
 	CallExprID,
 	JumpStmtID,
+	IfStmtID,
 	VariableID,
 	NumberID
 };
@@ -232,6 +233,27 @@ class JumpStmtAST : public BaseAST{
 			return base->getValueID()==JumpStmtID;
 		}
 };
+
+/**
+* if elseを表すAST
+*/
+class IfStmtAST : public BaseAST {
+	BaseAST* Cond;
+	BaseAST* Then;
+	BaseAST* Else;
+public:
+	IfStmtAST(BaseAST *_Cond, BaseAST *_Then, BaseAST *_Else)
+		: BaseAST(IfStmtID)	, Cond(_Cond), Then(_Then), Else(_Else) {}
+	~IfStmtAST() { SAFE_DELETE(Cond); SAFE_DELETE(Then); SAFE_DELETE(Else);	}
+	BaseAST *getCond() { return Cond; }
+	BaseAST *getThen() { return Then; }
+	BaseAST *getElse() { return Else; }
+	static inline bool classof(IfStmtAST const*) { return true; }
+	static inline bool classof(BaseAST const* base) {
+		return base->getValueID() == IfStmtID;
+	}
+};
+
 
 
 /** 

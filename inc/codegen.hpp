@@ -57,6 +57,7 @@ class CodeGen{
 		llvm::Value *generateBinaryExpression(BinaryExprAST *bin_expr);
 		llvm::Value *generateCallExpression(CallExprAST *call_expr);
 		llvm::Value *generateJumpStatement(JumpStmtAST *jump_stmt);
+		llvm::Value *generateIfStatement(IfStmtAST *if_stmt);
 		llvm::Value *generateVariable(VariableAST *var);
 		llvm::Value *generateNumber(int value);
 		bool linkModule(llvm::Module *dest, std::string file_name);

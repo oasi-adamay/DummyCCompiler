@@ -24,8 +24,8 @@ equality_expression
 	: relational_expression , [{"==" | "!="} ,relational_expression]
 
 assignment_expression
-	: IDENTIFIER , '=' , additive_expression
-	| additive_expression
+	: IDENTIFIER , '=' , equality_expression
+	| equality_expression
 	;
 
 argument_list
@@ -41,8 +41,9 @@ parameter
 	;
 
 statement
-	: assignment_statement
+	: expression_statement
 	| jump_statement
+	| selection_statement
 	;
 
 variable_declaration_list
@@ -55,19 +56,28 @@ statement_list
 
 expression_statement
 	: ';'
-	| assignment_expression , ';'
+	| expression , ';'
+	;
+
+expression
+	: [expression , ","] , assignment_expression
 	;
 
 jump_statement
-	: RETURN , assignment_expression , ';'
+	: RETURN , expression , ';'
 	;
+
+selection_statement
+	: IF , "(" , expression , ")" ,statement ,[ ELSE , statement]
+	;
+
 
 function_statement
 	: "{" , [ variable_declaration , list ] , statement_list , "}"
 	;
 
 external_declaration
-	: function_declaration 
+	: function_declaration
 	| function_definition
 	;
 
@@ -76,7 +86,7 @@ variable_declaration
 	;
 
 prototype
-	: type_specifier , IDENTIFIER , '(' , [ parameter , { "," , parameter} ] , ')' 
+	: type_specifier , IDENTIFIER , '(' , [ parameter , { "," , parameter} ] , ')'
 	;
 
 function_declaration
@@ -90,5 +100,3 @@ function_declaration
 translation_unit
 	: { external_declaration }
 	;
-
-

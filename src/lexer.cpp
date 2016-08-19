@@ -71,7 +71,14 @@ TokenStream *LexicalAnalysis(std::string input_filename){
 				}
 				else if(token_str == "return"){
 					next_token = new Token(token_str, TOK_RETURN, line_num);
-				}else{
+				}
+				else if (token_str == "if") {
+					next_token = new Token(token_str, TOK_IF, line_num);
+				}
+				else if (token_str == "else") {
+					next_token = new Token(token_str, TOK_ELSE, line_num);
+				}
+				else{
 					next_token = new Token(token_str, TOK_IDENTIFIER, line_num);
 				}
 		

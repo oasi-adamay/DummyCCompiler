@@ -9,7 +9,7 @@
 - 今回のフロントエンド作成用に勝手に定義したC言語のサブセット
 - 機能はかなり縮小
   - 変数や関数の型は全てint型
-  - if文やfor文などの分岐/繰り返し無
+  - ~~if文や~~for文などの分岐/繰り返し無
   - グローバル変数無
   - 変数の宣言時初期化無
   - 変数のカンマ区切りの宣言無
@@ -63,3 +63,8 @@ https://github.com/cormojs/DummyCCompiler
   - `LLVM_ENABLE_FFI`を付けて、LLVM rebuidが必要らしい。
 
 - 比較演算子のサポート
+- if-elseのサポート
+
+
+## memo
+http://www.cs.man.ac.uk/~pjj/bnf/c_syntax.bnf

@@ -359,9 +359,14 @@ BaseAST *Parser::visitStatement(){
 	BaseAST *stmt=NULL;
 	if(stmt=visitExpressionStatement()){
 		return stmt;
-	}else if(stmt=visitJumpStatement()){
+	}
+	else if(stmt=visitJumpStatement()){
 		return stmt;
-	}else{
+	}
+	else if (stmt = visitSelectionStatement()) {
+		return stmt;
+	}
+	else{
 		return NULL;
 	}
 }
@@ -372,16 +377,16 @@ BaseAST *Parser::visitStatement(){
   * @return  解析成功：AST　解析失敗：NULL
   */
 BaseAST *Parser::visitExpressionStatement(){
-	BaseAST *assign_expr;
+	BaseAST *expr;
 
 	//NULL Expression
 	if(Tokens->getCurString()==";"){
 		Tokens->getNextToken();
 		return new NullExprAST();
-	}else if((assign_expr=visitAssignmentExpression())){
+	}else if((expr=visitExpression())){
 		if(Tokens->getCurString()==";"){
 			Tokens->getNextToken();
-			return assign_expr;
+			return expr;
 		}
 	}
 	return NULL;
@@ -399,7 +404,7 @@ BaseAST *Parser::visitJumpStatement(){
 
 	if(Tokens->getCurType() == TOK_RETURN){
 		Tokens->getNextToken();	
-		if(!(expr=visitAssignmentExpression()) ){
+		if(!(expr=visitExpression()) ){
 			Tokens->applyTokenIndex(bkup);
 			return NULL;
 		}
@@ -415,6 +420,54 @@ BaseAST *Parser::visitJumpStatement(){
 		return NULL;
 	}
 }
+
+/**
+* SelectionStatement用構文解析メソッド
+* @return 解析成功：AST　解析失敗：NULL
+*/
+BaseAST *Parser::visitSelectionStatement() {
+	//bakup index
+	int bkup = Tokens->getCurIndex();
+	BaseAST *condExpr = NULL;
+	BaseAST *thenStmt = NULL;
+	BaseAST *elseStmt = NULL;
+
+	while (1) {
+		if (Tokens->getCurType() != TOK_IF) break;
+		Tokens->getNextToken();
+		if (Tokens->getCurString() != "(") break;
+		Tokens->getNextToken();
+		condExpr = visitExpression();
+		if (!condExpr) break;
+		if (Tokens->getCurString() != ")") break;
+		Tokens->getNextToken();
+		thenStmt = visitStatement();
+		if (!thenStmt) break;
+		if (Tokens->getCurType() != TOK_ELSE) break;
+		Tokens->getNextToken();
+		elseStmt = visitStatement();
+		break;
+	}
+
+	if (condExpr && thenStmt) {
+		return new IfStmtAST(condExpr, thenStmt, elseStmt);
+	}
+
+	Tokens->applyTokenIndex(bkup);
+	return NULL;
+}
+
+/**
+* Expression用構文解析メソッド
+* @return 解析成功：AST　解析失敗：NULL
+*/
+BaseAST *Parser::visitExpression() {
+	BaseAST *expr;
+	expr = visitAssignmentExpression();
+	return expr;
+}
+
+
 
 
 /**
@@ -437,7 +490,6 @@ BaseAST *Parser::visitAssignmentExpression(){
 			if(Tokens->getCurType()==TOK_SYMBOL &&
 				Tokens->getCurString()=="="){
 				Tokens->getNextToken();
-//				if(rhs=visitAdditiveExpression(NULL)){
 				if(rhs=visitEqualityExpression(NULL)){
 					return new BinaryExprAST("=", lhs, rhs);
 				}else{
@@ -454,7 +506,6 @@ BaseAST *Parser::visitAssignmentExpression(){
 	}
 
 	//additive_expression
-//	BaseAST *add_expr=visitAdditiveExpression(NULL);
 	BaseAST *add_expr= visitEqualityExpression(NULL);
 	if(add_expr){
 		return add_expr;
@@ -780,8 +831,8 @@ BaseAST *Parser::visitPrimaryExpression(){
 		Tokens->getNextToken();
 
 		//expression
-		BaseAST *assign_expr;
-		if(!(assign_expr=visitAssignmentExpression())){
+		BaseAST *expr;
+		if(!(expr=visitExpression())){
 			Tokens->applyTokenIndex(bkup);
 			return NULL;
 		}
@@ -789,9 +840,9 @@ BaseAST *Parser::visitPrimaryExpression(){
 		//RIGHT PALEN
 		if(Tokens->getCurString()==")"){
 			Tokens->getNextToken();
-			return assign_expr;
+			return expr;
 		}else{
-			SAFE_DELETE(assign_expr);
+			SAFE_DELETE(expr);
 			Tokens->applyTokenIndex(bkup);
 			return NULL;
 		}

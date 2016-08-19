@@ -50,6 +50,8 @@ typedef class Parser{
 		BaseAST *visitStatement();
 		BaseAST *visitExpressionStatement();
 		BaseAST *visitJumpStatement();
+		BaseAST *visitSelectionStatement();
+		BaseAST *visitExpression();
 		BaseAST *visitAssignmentExpression();
 		BaseAST *visitEqualityExpression(BaseAST *lhs);
 		BaseAST *visitRelationalExpression(BaseAST *lhs);
