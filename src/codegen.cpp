@@ -189,7 +189,6 @@ llvm::Function *CodeGen::generatePrototype(PrototypeAST *proto, llvm::Module *mo
   */
 llvm::Value *CodeGen::generateFunctionStatement(FunctionStmtAST *func_stmt){
 	//insert variable decls
-	VariableDeclAST *vdecl;
 	llvm::Value *v=NULL;
 	for(int i=0; ; i++){
 		//最後まで見たら終了
@@ -197,8 +196,7 @@ llvm::Value *CodeGen::generateFunctionStatement(FunctionStmtAST *func_stmt){
 			break;
 
 		//create alloca
-		vdecl=llvm::dyn_cast<VariableDeclAST>(func_stmt->getVariableDecl(i));
-		v=generateVariableDeclaration(vdecl);
+		v = generate(func_stmt->getVariableDecl(i));
 	}
 
 	//insert expr statement
@@ -340,33 +338,17 @@ llvm::Value *CodeGen::generateCallExpression(CallExprAST *call_expr){
 		if(!(arg=call_expr->getArgs(i)))
 			break;
 
-		//isCall
-		if(llvm::isa<CallExprAST>(arg))
-			arg_v=generateCallExpression(llvm::dyn_cast<CallExprAST>(arg));
+		arg_v = generate(arg);
 
-		//isBinaryExpr
-		else if(llvm::isa<BinaryExprAST>(arg)){
+		//代入の時はLoad命令を追加
+		if (llvm::isa<BinaryExprAST>(arg)) {
 			BinaryExprAST *bin_expr = llvm::dyn_cast<BinaryExprAST>(arg);
-
-			//二項演算命令を生成
-			arg_v=generateBinaryExpression(llvm::dyn_cast<BinaryExprAST>(arg));
-
-			//代入の時はLoad命令を追加
-			if(bin_expr->getOp()=="="){
-				VariableAST *var= llvm::dyn_cast<VariableAST>(bin_expr->getLHS());
-				arg_v=Builder->CreateLoad(vs_table.lookup(var->getName()), "arg_val");
+			if (bin_expr->getOp() == "=") {
+				VariableAST *var = llvm::dyn_cast<VariableAST>(bin_expr->getLHS());
+				arg_v = Builder->CreateLoad(vs_table.lookup(var->getName()), "arg_val");
 			}
 		}
 
-		//isVar
-		else if(llvm::isa<VariableAST>(arg))
-			arg_v=generateVariable(llvm::dyn_cast<VariableAST>(arg));
-		
-		//isNumber
-		else if(llvm::isa<NumberAST>(arg)){
-			NumberAST *num=llvm::dyn_cast<NumberAST>(arg);
-			arg_v=generateNumber(num->getNumberValue());
-		}
 		arg_vec.push_back(arg_v);
 	}
 	return Builder->CreateCall( Mod->getFunction(call_expr->getCallee()),
@@ -492,9 +474,6 @@ llvm::Value *CodeGen::generateNumber(int value){
 * @return  生成したValueのポインタ
 */
 llvm::Value *CodeGen::generate(BaseAST *ast) {
-	//llvm::Value *generateFunctionStatement(FunctionStmtAST *func_stmt);
-	//llvm::Value *generateVariableDeclaration(VariableDeclAST *vdecl);
-	//llvm::Value *generateStatement(BaseAST *stmt);
 
 	llvm::Value *val = nullptr;
 
@@ -522,6 +501,10 @@ llvm::Value *CodeGen::generate(BaseAST *ast) {
 	//if-else ?
 	else if (llvm::isa<IfStmtAST>(ast)) {
 		val = generateIfStatement(llvm::dyn_cast<IfStmtAST>(ast));
+	}
+	// VariableDeclaration ? 
+	else if (llvm::isa<VariableDeclAST>(ast)) {
+		val = generateVariableDeclaration(llvm::dyn_cast<VariableDeclAST>(ast));
 	}
 
 
