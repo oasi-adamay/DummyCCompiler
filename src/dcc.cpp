@@ -149,13 +149,14 @@ int main(int argc, char **argv) {
 		exit(1);
 	}
 
-	fprintf(stderr, "===before opt===\n");
-	mod.dump();
+	//fprintf(stderr, "===before opt===\n");
+	//mod.dump();
 
 	llvm::legacy::PassManager pm;
 
 	//SSA化
-	pm.add(llvm::createPromoteMemoryToRegisterPass());
+	// @@@@ fibonacci.dcで戻ってこない
+	//pm.add(llvm::createPromoteMemoryToRegisterPass());
 
 
 	//出力
@@ -165,8 +166,8 @@ int main(int argc, char **argv) {
 	pm.run(mod);
 	raw_stream.close();
 
-	fprintf(stderr, "===after opt===\n");
-	mod.dump();
+	//fprintf(stderr, "===after opt===\n");
+	//mod.dump();
 
 
 	//delete

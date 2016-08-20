@@ -129,6 +129,10 @@ llvm::Function *CodeGen::generateFunctionDefinition(FunctionAST *func_ast,
 	Builder->SetInsertPoint(bblock);
 	generateFunctionStatement(func_ast->getBody());
 
+	// Validate the generated code, checking for consistency.
+	// 矛盾が無いか、生成されたコードを検証する。
+	llvm::verifyFunction(*func);
+
 	return func;
 }
 
@@ -204,7 +208,7 @@ llvm::Value *CodeGen::generateFunctionStatement(FunctionStmtAST *func_stmt){
 		if(!stmt)
 			break;
 		else if(!llvm::isa<NullExprAST>(stmt))
-			v=generateStatement(stmt);
+			v=generate(stmt);
 	}
 
 	return v;
@@ -234,29 +238,6 @@ llvm::Value *CodeGen::generateVariableDeclaration(VariableDeclAST *vdecl){
 }
 
 
-/**
-  * ステートメント生成メソッド
-  * 実際にはASTの種類を確認して各種生成メソッドを呼び出し
-  * @param  JumpStmtAST
-  * @return 生成したValueのポインタ
-  */
-llvm::Value *CodeGen::generateStatement(BaseAST *stmt){
-	if(llvm::isa<BinaryExprAST>(stmt)){
-		return generateBinaryExpression(llvm::dyn_cast<BinaryExprAST>(stmt));
-	}
-	else if(llvm::isa<CallExprAST>(stmt)){
-		return generateCallExpression(llvm::dyn_cast<CallExprAST>(stmt));
-	}
-	else if(llvm::isa<JumpStmtAST>(stmt)){
-		return generateJumpStatement(llvm::dyn_cast<JumpStmtAST>(stmt));
-	}
-	else if (llvm::isa<IfStmtAST>(stmt)) {
-		return generateIfStatement(llvm::dyn_cast<IfStmtAST>(stmt));
-	}
-	else{
-		return NULL;
-	}
-}
 
 
 /**
@@ -280,41 +261,12 @@ llvm::Value *CodeGen::generateBinaryExpression(BinaryExprAST *bin_expr){
 
 	//other operand
 	}else{
-		//lhs=?
-		//Binary?
-		if(llvm::isa<BinaryExprAST>(lhs)){
-			lhs_v=generateBinaryExpression(llvm::dyn_cast<BinaryExprAST>(lhs));
-
-		//Variable?
-        }else if(llvm::isa<VariableAST>(lhs)){
-			lhs_v=generateVariable(llvm::dyn_cast<VariableAST>(lhs));
-
-		//Number?
-        }else if(llvm::isa<NumberAST>(lhs)){
-			NumberAST *num=llvm::dyn_cast<NumberAST>(lhs);
-			lhs_v=generateNumber(num->getNumberValue());
-		}
+		lhs_v = generate(lhs);
 	}
 
 
 	//create rhs value
-	if(llvm::isa<BinaryExprAST>(rhs)){
-		rhs_v=generateBinaryExpression(llvm::dyn_cast<BinaryExprAST>(rhs));
-
-	//CallExpr?
-    }else if(llvm::isa<CallExprAST>(rhs)){
-		rhs_v=generateCallExpression(llvm::dyn_cast<CallExprAST>(rhs));
-
-	//Variable?
-    }else if(llvm::isa<VariableAST>(rhs)){
-		rhs_v=generateVariable(llvm::dyn_cast<VariableAST>(rhs));
-
-	//Number?
-    }else if(llvm::isa<NumberAST>(rhs)){
-		NumberAST *num=llvm::dyn_cast<NumberAST>(rhs);
-		rhs_v=generateNumber(num->getNumberValue());
-	}
-
+	rhs_v = generate(rhs);
 	
 	
 	if(bin_expr->getOp()=="="){
@@ -430,16 +382,7 @@ llvm::Value *CodeGen::generateCallExpression(CallExprAST *call_expr){
 llvm::Value *CodeGen::generateJumpStatement(JumpStmtAST *jump_stmt){
 	BaseAST *expr=jump_stmt->getExpr();
 	llvm::Value *ret_v;
-	if(llvm::isa<BinaryExprAST>(expr)){
-		ret_v=generateBinaryExpression(llvm::dyn_cast<BinaryExprAST>(expr));
-	}else if(llvm::isa<VariableAST>(expr)){
-		VariableAST *var=llvm::dyn_cast<VariableAST>(expr);
-		ret_v = generateVariable(var);
-	}else if(llvm::isa<NumberAST>(expr)){
-		NumberAST *num=llvm::dyn_cast<NumberAST>(expr);
-		ret_v=generateNumber(num->getNumberValue());
-
-	}
+	ret_v = generate(expr);
 	Builder->CreateRet(ret_v);
 	return ret_v;
 }
@@ -455,30 +398,20 @@ llvm::Value *CodeGen::generateIfStatement(IfStmtAST *if_stmt) {
 	BaseAST *else_stmt = if_stmt->getElse();
 
 	llvm::Value *cond_v;
-	if (llvm::isa<BinaryExprAST>(cond_expr)) {
-		cond_v = generateBinaryExpression(llvm::dyn_cast<BinaryExprAST>(cond_expr));
-	}
-	else if (llvm::isa<VariableAST>(cond_expr)) {
-		VariableAST *var = llvm::dyn_cast<VariableAST>(cond_expr);
-		cond_v = generateVariable(var);
-	}
-	else if (llvm::isa<NumberAST>(cond_expr)) {
-		NumberAST *num = llvm::dyn_cast<NumberAST>(cond_expr);
-		cond_v = generateNumber(num->getNumberValue());
-	}
+	cond_v = generate(cond_expr);
 	if (!cond_v) return NULL;
 
 	// 条件を0と比較することによって真偽値に変換する。
-	cond_v = Builder->CreateICmpNE(	cond_v, Builder->getInt32(0), "ifcond");
+	cond_v = Builder->CreateICmpNE(	cond_v, Builder->getInt32(0), "if.cond");
 
 	// 現在構築中の関数オブジェクトを取得する。
 	llvm::Function *TheFunction = Builder->GetInsertBlock()->getParent();
 
 	// thenとelseの場合のためのブロックを生成する。
 	// thenブロックを関数の最後に挿入する。
-	llvm::BasicBlock *ThenBB =	llvm::BasicBlock::Create(llvm::getGlobalContext(), "if_true", TheFunction);
-	llvm::BasicBlock *ElseBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "if_false");
-	llvm::BasicBlock *MergeBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "if_exit");
+	llvm::BasicBlock *ThenBB =	llvm::BasicBlock::Create(llvm::getGlobalContext(), "if.then", TheFunction);
+	llvm::BasicBlock *ElseBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "if.else");
+	llvm::BasicBlock *EndBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "if.end");
 
 	//ブロックが生成されたら、どちらのブロックを選ぶかを決めるための条件分岐を生成することが出来る。
 	Builder->CreateCondBr(cond_v, ThenBB, ElseBB);
@@ -488,30 +421,35 @@ llvm::Value *CodeGen::generateIfStatement(IfStmtAST *if_stmt) {
 	Builder->SetInsertPoint(ThenBB);
 
 	// 挿入点がセットされたら、ASTからthenのCodegenを再帰的に実行する。
-	llvm::Value *then_v = generateStatement(then_stmt);
-	if (!then_v) return nullptr;
+	if (else_stmt) {
+		llvm::Value *then_v = generate(then_stmt);
+		if (!then_v) return nullptr;
+	}
 
-	// thenブロックを仕上げるために、無条件の分岐（br命令）をmergeブロックに生成する。
-	Builder->CreateBr(MergeBB);
+	// thenブロックを仕上げるために、無条件の分岐（br命令）をendブロックに生成する。
+	Builder->CreateBr(EndBB);
 
 	// thenのCodegenは、現在のブロックを変更し、phiのためにThenBBを更新しうる。
 	ThenBB = Builder->GetInsertBlock();
 
 	// elseブロックを発行する。
-	TheFunction->getBasicBlockList().push_back(ElseBB);
-	Builder->SetInsertPoint(ElseBB);
-	llvm::Value *else_v = generateStatement(else_stmt);
-	if (!else_v) return nullptr;
+	if (else_stmt) {
+		TheFunction->getBasicBlockList().push_back(ElseBB);
+		Builder->SetInsertPoint(ElseBB);
+		llvm::Value *else_v = generate(else_stmt);
+		if (!else_v) return nullptr;
+	}
+
 
 	// elseブロックを仕上げるために、無条件の分岐（br命令）をmergeブロックに生成する。
-	Builder->CreateBr(MergeBB);
+	Builder->CreateBr(EndBB);
 
 	// elseのCodegenは、現在のブロックを変更し、phiのためにElseBBを更新しうる。
 	ElseBB = Builder->GetInsertBlock();
 
-	// 分岐を合流させるコード（merge code）
-	TheFunction->getBasicBlockList().push_back(MergeBB);
-	Builder->SetInsertPoint(MergeBB);
+	// 分岐を合流させるコード（end code）
+	TheFunction->getBasicBlockList().push_back(EndBB);
+	Builder->SetInsertPoint(EndBB);
 
 #if 1
 	//TheFunction->dump();
@@ -547,6 +485,52 @@ llvm::Value *CodeGen::generateNumber(int value){
 			llvm::Type::getInt32Ty(llvm::getGlobalContext()),
 			value);
 }
+
+/**
+* Valueを返す、全てのAST生成メソッド　wrapper
+* @param ast
+* @return  生成したValueのポインタ
+*/
+llvm::Value *CodeGen::generate(BaseAST *ast) {
+	//llvm::Value *generateFunctionStatement(FunctionStmtAST *func_stmt);
+	//llvm::Value *generateVariableDeclaration(VariableDeclAST *vdecl);
+	//llvm::Value *generateStatement(BaseAST *stmt);
+
+	llvm::Value *val = nullptr;
+
+	//Binary?
+	if(llvm::isa<BinaryExprAST>(ast)){
+		val =generateBinaryExpression(llvm::dyn_cast<BinaryExprAST>(ast));
+    }
+	//Variable?
+	else if(llvm::isa<VariableAST>(ast)){
+		val =generateVariable(llvm::dyn_cast<VariableAST>(ast));
+    }
+	//Number?
+	else if(llvm::isa<NumberAST>(ast)){
+		NumberAST *num=llvm::dyn_cast<NumberAST>(ast);
+		val =generateNumber(num->getNumberValue());
+	}
+	//Call ?
+	else if (llvm::isa<CallExprAST>(ast)) {
+		val = generateCallExpression(llvm::dyn_cast<CallExprAST>(ast));
+	}
+	//Jump ?
+	else if (llvm::isa<JumpStmtAST>(ast)) {
+		val = generateJumpStatement(llvm::dyn_cast<JumpStmtAST>(ast));
+	}
+	//if-else ?
+	else if (llvm::isa<IfStmtAST>(ast)) {
+		val = generateIfStatement(llvm::dyn_cast<IfStmtAST>(ast));
+	}
+
+
+	return val;
+
+
+
+}
+
 
 
 bool CodeGen::linkModule(llvm::Module *dest, std::string file_name){

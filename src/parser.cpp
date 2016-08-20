@@ -137,9 +137,13 @@ FunctionAST *Parser::visitFunctionDefinition(){
 			return NULL;
 	}
 
+	//for recursive call
+	PrototypeTable[proto->getName()] = proto->getParamNum();
+
 	VariableTable.clear();
 	FunctionStmtAST *func_stmt = visitFunctionStatement(proto);
 	if(func_stmt){
+		PrototypeTable.erase(proto->getName());
 		FunctionTable[proto->getName()]=proto->getParamNum();
 		return new FunctionAST(proto,func_stmt);
 	}else{
